@@ -1,0 +1,178 @@
+<script>
+var kernel = IPython.notebook.kernel;
+
+function handleOutput(out) {
+    try {
+        console.log(out);
+        if(out.msg_type == "error"){
+            $("#stringoutput").html(out.content.ename + ": " + out.content.evalue);
+            $("#regex").addClass('error');
+            $("#groups").html('');
+            return;
+        } else {
+            $("#regex").removeClass('error');
+            res = out.content.data["text/plain"];
+        }
+        res = res.replace("\n", '<br>');
+        res = res.substr(1,res.length-2);
+        console.log('res: ' + res);
+        $("#stringoutput").html(res);
+
+        //Get Groups
+        var callbacks = { 'iopub' : {'output' : handleGroups}};
+        kernel.execute("groups()", callbacks, {silent:false})
+    } catch(e) {
+        console.log("Error in handleOutput(): " + e.message);
+    }
+}
+
+function handleGroups(out) {
+    try {
+        console.log(out);
+        if(out.msg_type == "error"){
+            res = out.content.ename + ": " + out.content.evalue;
+        } else {
+            res = out.content.data["text/plain"];
+        }
+        res = res.substr(1,res.length-2);
+        $("#groups").html(res);
+    } catch(e) {
+        console.log("Error in handleGroups(): " + e.message);
+    }
+}
+
+function checkMatch() {
+    try {
+        text = $('#string').val();
+        pattern = $('#regex').val();
+        kernel.execute("text = '''" + text + "'''");
+        kernel.execute("pattern = r'" + pattern + "'");
+        $("#groups").html('');
+        if (pattern.length > 0 && text.length > 0) {
+            var callbacks = { 'iopub' : {'output' : handleOutput}};
+            kernel.execute("highlight()", callbacks, {silent:false})
+        }
+    } catch(e) {
+        console.log("Error in checkMatch(): " + e.message);
+    }
+}
+
+function ke(elem, entry) {
+    try {
+        switch(entry) {
+            case 'flag':
+                if (elem.checked) {
+                    console.log(elem.id + '=True');
+                    kernel.execute('flags["' + elem.id + '"]=True');
+                    break;
+                } else {
+                    console.log(elem.id + '=False');
+                    kernel.execute('flags["' + elem.id + '"]=False');
+                    break;
+                }
+        }
+    } catch(e) {
+        console.log("Error in ke(): " + e.message);
+    }
+}
+
+function toggleCode() {
+    $('div.input').toggle(750);
+    if ($("#show-hide-button").text() == "Mostrar el código de Python") {
+        $("#show-hide-button").text("Esconder el código de Python");
+    } else {
+        $("#show-hide-button").text("Mostrar el código de Python");
+    }
+    $('div.output_prompt').toggle()
+    $('div.out_prompt_overlay').toggle()
+}
+$( document ).ready(toggleCode);
+</script>
+<style>
+    #regex-container {
+        width:100%;
+        border:none;
+    }
+
+    #regex-container td {
+        border:none;
+        vertical-align:top;
+        padding:20px;
+    }
+    #regex-container td#right-col {
+        text-align:center;
+        border-left:1px solid #000;
+    }
+    #regex-container tr {
+        vertical-align: top;
+        border:none;
+    }
+
+    #show-hide-button {
+        font-size:12pt;
+        padding:5px;
+    }
+
+    .error {
+        background-color:#f99;
+    }
+    #regex {
+        font-size:16pt;
+        width:700px;
+    }
+    #execute-button {
+        width:700px;
+        font-size:20pt;
+        padding:10px;
+    }
+    span.match {
+        background-color:#ff0;
+    }
+    textarea#string {
+        font-family:monospace;
+        height:100px;
+        width:700px;
+    }
+    #stringoutput {
+        border:1px solid #000;
+        min-height:100px;
+        width:700px
+    }
+    li.strong {
+        border-top:1px solid #999;
+        border-bottom:1px dashed #000;
+        background-color:#ffc;
+    }
+
+    .output {
+        min-height:800px;
+        overflow:scroll;
+    }
+</style>
+<meta charset="utf-8" /> 
+<table id="regex-container">
+    <tr>
+        <td>
+            <h3>Expresiones Regulares:</h3>
+            <input id="regex" value="\b\b"><br><br>
+            <div id="flags">
+                <label><input type="checkbox" id="ignorecase" onclick="ke(this,'flag')" checked> IGNORECASE</label> |
+                <label><input type="checkbox" id="locale" onclick="ke(this,'flag')"> LOCALE</label> |
+                <label><input type="checkbox" id="multiline" onclick="ke(this,'flag')"> MULTILINE</label> |
+                <label><input type="checkbox" id="dotall" onclick="ke(this,'flag')"> DOTALL</label> |
+                <label><input type="checkbox" id="verbose" onclick="ke(this,'flag')"> VERBOSE</label> |
+                <label><input type="checkbox" id="ascii" onclick="ke(this,'flag')"> ASCII</label>
+            </div>
+            <h3>Introduzca una cadena para buscar:</h3>
+            <textarea id="string">Esto es un comprobador de expresiones regulares desarrollado en python para ser ejecutado en un notebook. Una url puede ser detectada al igual que una dirección de correo o un telefono </textarea><br>
+            <button id="execute-button" onclick="checkMatch()">Ejecutar</button>
+            <h3>Salida:</h3>
+            <pre id="stringoutput"></pre>
+            <h3>Grupos</h3>
+            <ul id="groups"></ul>
+        </td>
+        <td id="right-col">
+            <button onclick="toggleCode()" id="show-hide-button">Esconder el código de Python</button>
+        </td>
+    </tr>
+</table>
